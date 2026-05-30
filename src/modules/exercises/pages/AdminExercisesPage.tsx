@@ -7,14 +7,14 @@ import { useAdminExercises } from "../hooks/useAdminExercises";
 import { AdminExerciseFormValues } from "../types/adminExercise.types";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  EXERCISE_NOT_FOUND: "Khong tim thay bai tap",
-  EXERCISE_NAME_ALREADY_EXISTS: "Ten bai tap da ton tai",
-  VALIDATION_ERROR: "Du lieu nhap khong hop le",
-  UNAUTHORIZED: "Phien dang nhap da het han",
-  ADMIN_ONLY: "Ban khong co quyen admin",
-  ACCOUNT_BLOCKED: "Tai khoan da bi chan",
-  NETWORK_ERROR: "Khong the ket noi server",
-  UNKNOWN_ERROR: "Co loi xay ra, vui long thu lai",
+  EXERCISE_NOT_FOUND: "Exercise not found",
+  EXERCISE_NAME_ALREADY_EXISTS: "Exercise name already exists",
+  VALIDATION_ERROR: "Invalid data entered",
+  UNAUTHORIZED: "Session expired",
+  ADMIN_ONLY: "You do not have admin privileges",
+  ACCOUNT_BLOCKED: "Account has been blocked",
+  NETWORK_ERROR: "Unable to connect to server",
+  UNKNOWN_ERROR: "An error occurred, please try again",
 };
 
 export function AdminExercisesPage() {

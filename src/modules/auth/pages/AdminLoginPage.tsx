@@ -5,10 +5,10 @@ import { AdminApiError } from "../../../shared/api/httpClient";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_CREDENTIALS: "Email hoặc mật khẩu không đúng",
-  ADMIN_ONLY: "Tài khoản này không có quyền admin",
-  ACCOUNT_BLOCKED: "Tài khoản đã bị chặn",
-  UNKNOWN_ERROR: "Có lỗi xảy ra, vui lòng thử lại",
+  INVALID_CREDENTIALS: "Incorrect email or password",
+  ADMIN_ONLY: "This account does not have admin privileges",
+  ACCOUNT_BLOCKED: "Account has been blocked",
+  UNKNOWN_ERROR: "An error occurred, please try again",
 };
 
 export function AdminLoginPage() {

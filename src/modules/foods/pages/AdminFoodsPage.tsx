@@ -9,14 +9,14 @@ import { useAdminFoods } from "../hooks/useAdminFoods";
 import { AdminFoodFormValues } from "../types/adminFood.types";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  FOOD_NOT_FOUND: "Không tìm thấy thực phẩm",
-  FOOD_NAME_ALREADY_EXISTS: "Tên thực phẩm đã tồn tại",
-  VALIDATION_ERROR: "Dữ liệu nhập không hợp lệ",
-  UNAUTHORIZED: "Phiên đăng nhập đã hết hạn",
-  ADMIN_ONLY: "Bạn không có quyền admin",
-  ACCOUNT_BLOCKED: "Tài khoản đã bị chặn",
-  NETWORK_ERROR: "Không thể kết nối server",
-  UNKNOWN_ERROR: "Có lỗi xảy ra, vui lòng thử lại",
+  FOOD_NOT_FOUND: "Food not found",
+  FOOD_NAME_ALREADY_EXISTS: "Food name already exists",
+  VALIDATION_ERROR: "Invalid data entered",
+  UNAUTHORIZED: "Session expired",
+  ADMIN_ONLY: "You do not have admin privileges",
+  ACCOUNT_BLOCKED: "Account has been blocked",
+  NETWORK_ERROR: "Unable to connect to server",
+  UNKNOWN_ERROR: "An error occurred, please try again",
 };
 
 export function AdminFoodsPage() {

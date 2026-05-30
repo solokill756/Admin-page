@@ -3,10 +3,10 @@ import { useAdminDashboardOverview } from "../hooks/useAdminDashboardOverview";
 import { AdminDashboardOverview } from "../types/adminDashboard.types";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  UNAUTHORIZED: "Phiên đăng nhập đã hết hạn",
-  ADMIN_ONLY: "Bạn không có quyền truy cập trang admin",
-  NETWORK_ERROR: "Không thể kết nối server",
-  UNKNOWN_ERROR: "Có lỗi xảy ra, vui lòng thử lại",
+  UNAUTHORIZED: "Session expired",
+  ADMIN_ONLY: "You do not have permission to access the admin page",
+  NETWORK_ERROR: "Unable to connect to the server",
+  UNKNOWN_ERROR: "An error occurred, please try again",
 };
 
 const SKELETON_CARDS = Array.from({ length: 9 }, (_, index) => index);
