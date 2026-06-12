@@ -7,6 +7,7 @@ import { AdminExercisesPage } from "../modules/exercises/pages/AdminExercisesPag
 import { AdminFoodsPage } from "../modules/foods/pages/AdminFoodsPage";
 import { AdminRecipesPage } from "../modules/recipes/pages/AdminRecipesPage";
 import { AdminUsersPage } from "../modules/users/pages/AdminUsersPage";
+import { AdminConditionRulesPage } from "../modules/condition-rules/pages/AdminConditionRulesPage";
 
 export function AppRouter() {
   return (
@@ -27,6 +28,7 @@ export function AppRouter() {
         <Route path="exercises" element={<AdminExercisesPage />} />
         <Route path="recipes" element={<AdminRecipesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="condition-rules" element={<AdminConditionRulesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>

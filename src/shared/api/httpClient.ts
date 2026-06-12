@@ -1,6 +1,6 @@
 import { clearAdminAuthStorage, getAdminAccessToken } from "../../modules/auth/hooks/authStorage";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://162.246.21.141:8080";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 
 export type AdminApiErrorBody = {
   success: false;

@@ -3,6 +3,7 @@ import {
   Dumbbell,
   LayoutDashboard,
   LogOut,
+  ShieldCheck,
   Soup,
   Users,
 } from "lucide-react";
@@ -14,6 +15,7 @@ const navItems = [
   { label: "Exercises", path: "/admin/exercises", icon: Dumbbell },
   { label: "Recipes", path: "/admin/recipes", icon: Soup },
   { label: "Users", path: "/admin/users", icon: Users },
+  { label: "Condition Rules", path: "/admin/condition-rules", icon: ShieldCheck },
 ];
 
 type SidebarProps = {

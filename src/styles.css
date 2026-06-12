@@ -1184,3 +1184,18 @@ a {
   transition: width 0.2s ease-out;
 }
 
+.condition-rules-page .filter-bar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.condition-preview {
+  margin-top: 16px;
+}
+
+.condition-preview .overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
