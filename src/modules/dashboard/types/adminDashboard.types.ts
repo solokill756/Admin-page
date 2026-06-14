@@ -5,7 +5,6 @@ export type AdminDashboardOverview = {
   totalFoods: number;
   verifiedFoods: number;
   unverifiedFoods: number;
-  totalCategories: number;
   totalExercises: number;
   totalWorkoutRoutines: number;
   totalRecipes: number;

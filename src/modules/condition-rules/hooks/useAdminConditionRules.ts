@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { adminConditionRulesApi } from "../api/adminConditionRulesApi";
-import { AdminConditionRule, AdminConditionRulePreview } from "../types/adminConditionRule.types";
+import { AdminConditionRule, AdminConditionRulePreview, CONDITION_DEFS } from "../types/adminConditionRule.types";
 
-export const CONDITION_OPTIONS = ["diabetes", "hypertension", "heart_disease", "high_cholesterol", "kidney_disease"];
+export const CONDITION_OPTIONS = CONDITION_DEFS.map((item) => item.key);
 
 export function useAdminConditionRules() {
   const [conditionKey, setConditionKey] = useState(CONDITION_OPTIONS[0]);
@@ -28,6 +28,7 @@ export function useAdminConditionRules() {
 
   useEffect(() => {
     void load();
+    setPreview(null);
   }, [load]);
 
   const updateRule = useCallback((index: number, patch: Partial<AdminConditionRule>) => {
@@ -39,7 +40,13 @@ export function useAdminConditionRules() {
       ...current,
       { id: null, conditionKey, nutrient: "sodium", minAmount: null, maxAmount: 1500, unit: "mg", rebalanceMode: "strict", isActive: true },
     ]);
+    setPreview(null);
   }, [conditionKey]);
+
+  const removeRule = useCallback((index: number) => {
+    setRules((current) => current.filter((_, i) => i !== index));
+    setPreview(null);
+  }, []);
 
   const buildPayload = useCallback((confirmRiskyChanges = false) => ({
     conditionKey,
@@ -77,5 +84,22 @@ export function useAdminConditionRules() {
     }
   }, [buildPayload, load]);
 
-  return { conditionKey, setConditionKey, rules, preview, errorCode, isLoading, isMutating, updateRule, addRule, previewChanges, applyChanges, retry: load };
+  const activeRuleCount = rules.filter((rule) => rule.isActive).length;
+
+  return {
+    conditionKey,
+    setConditionKey,
+    rules,
+    preview,
+    errorCode,
+    isLoading,
+    isMutating,
+    activeRuleCount,
+    updateRule,
+    addRule,
+    removeRule,
+    previewChanges,
+    applyChanges,
+    retry: load,
+  };
 }

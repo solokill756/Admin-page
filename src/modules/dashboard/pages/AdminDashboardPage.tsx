@@ -9,7 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   UNKNOWN_ERROR: "An error occurred, please try again",
 };
 
-const SKELETON_CARDS = Array.from({ length: 9 }, (_, index) => index);
+const SKELETON_CARDS = Array.from({ length: 8 }, (_, index) => index);
 
 export function AdminDashboardPage() {
   const { data, errorCode, isLoading, retry } = useAdminDashboardOverview();
@@ -114,11 +114,6 @@ function buildCards(data: AdminDashboardOverview) {
       label: "Unverified Foods",
       value: data.unverifiedFoods,
       description: "Foods pending verification",
-    },
-    {
-      label: "Categories",
-      value: data.totalCategories,
-      description: "Food and content categories",
     },
     {
       label: "Exercises",
