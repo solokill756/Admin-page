@@ -131,8 +131,18 @@ export function RecipeFormModal({ recipe, isSubmitting, onClose, onSubmit }: Rec
                 <option value="hard">Hard</option>
               </select>
             </label>
-            <TextField label="Source type" value={values.sourceType ?? ""} onChange={(value) => updateField("sourceType", value)} />
+            <label className="form-field">
+              <span>Share with</span>
+              <select
+                value={values.shareWith ?? 1}
+                onChange={(event) => updateField("shareWith", Number(event.target.value))}
+              >
+                <option value={1}>Private</option>
+                <option value={2}>Community</option>
+              </select>
+            </label>
           </div>
+          <TextField label="Source type" value={values.sourceType ?? ""} onChange={(value) => updateField("sourceType", value)} />
           <TextField label="Tags" value={tagText} onChange={setTagText} />
           <label className="checkbox-row">
             <input
