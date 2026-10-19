@@ -1,23 +1,29 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { AddDocumentBar } from "../components/AddDocumentBar";
+import { ChunkList } from "../components/ChunkList";
+import { DocumentDetail } from "../components/DocumentDetail";
 import { DocumentList } from "../components/DocumentList";
+import { useRagChunks } from "../hooks/useRagChunks";
 import { useRagDocuments } from "../hooks/useRagDocuments";
+import { useRagTaxonomy } from "../hooks/useRagTaxonomy";
 import { messageForRagError } from "../lib/ragErrors";
-
-type DocumentDetailColumnProps = {
-  selectedId: string | null;
-};
-
-// Seam for Task 3: replace the body with the document detail + chunk list, driven by `selectedId`.
-function DocumentDetailColumn(_props: DocumentDetailColumnProps) {
-  return <p className="state-copy">Select a document to see its chunks.</p>;
-}
+import type { RagDocument } from "../types/adminRag.types";
 
 export function AdminRagDocumentsPage() {
   const { showToast } = useToast();
   const rag = useRagDocuments();
+  const { taxonomy } = useRagTaxonomy();
   const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  // Keep showing the selected document if it moves off the currently listed page.
+  const lastSelectedDocument = useRef<RagDocument | null>(null);
+  const listed = rag.documents.find((doc) => doc.id === rag.selectedId) ?? null;
+  if (listed) lastSelectedDocument.current = listed;
+  const selectedDocument =
+    listed ?? (lastSelectedDocument.current?.id === rag.selectedId ? lastSelectedDocument.current : null);
+
+  const chunks = useRagChunks(selectedDocument?.id ?? null, selectedDocument?.status);
 
   async function handleRetry(id: string) {
     setRetryingId(id);
@@ -58,7 +64,26 @@ export function AdminRagDocumentsPage() {
           />
         </div>
         <div className="rag-detail-column">
-          <DocumentDetailColumn selectedId={rag.selectedId} />
+          <DocumentDetail
+            document={selectedDocument}
+            onRename={rag.renameDocument}
+            onReingest={rag.reingest}
+            onDelete={rag.deleteDocument}
+          />
+          {selectedDocument ? (
+            <ChunkList
+              chunks={chunks.chunks}
+              filter={chunks.filter}
+              isLoading={chunks.isLoading}
+              errorCode={chunks.errorCode}
+              taxonomy={taxonomy}
+              selectedChunkId={chunks.selectedChunkId}
+              onSelect={chunks.setSelectedChunkId}
+              onFilterChange={chunks.setFilter}
+              onReload={() => void chunks.reload()}
+              // Task 4: pass renderEditor={(chunk) => <ChunkEditor ... />} here.
+            />
+          ) : null}
         </div>
       </div>
     </section>

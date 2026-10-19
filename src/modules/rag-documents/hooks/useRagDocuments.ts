@@ -88,6 +88,9 @@ export function useRagDocuments() {
     }));
   }, []);
 
+  const listStateRef = useRef({ documents, pagination });
+  listStateRef.current = { documents, pagination };
+
   const refresh = useCallback(() => load(debouncedQueryRef.current, false), [load]);
   const reload = useCallback(() => load(debouncedQueryRef.current, true), [load]);
 
@@ -129,9 +132,15 @@ export function useRagDocuments() {
     async (id: string) => {
       await adminRagApi.deleteDocument(id);
       setSelectedId((current) => (current === id ? null : current));
+      const { documents: shown, pagination: currentPagination } = listStateRef.current;
+      if (shown.length === 1 && currentPagination.page > 1) {
+        // Deleted the last item of a later page: step back; the query change reloads the list.
+        updateQuery({ page: currentPagination.page - 1 }, false);
+        return;
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, updateQuery],
   );
 
   return {
