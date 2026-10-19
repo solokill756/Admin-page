@@ -1691,6 +1691,7 @@ a {
 .rag-detail-column {
   display: grid;
   gap: 16px;
+  container-type: inline-size;
 }
 
 .rag-detail {
@@ -1910,8 +1911,50 @@ a {
   background: #ffffff;
 }
 
-.rag-editor.with-image {
-  grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
+/* Image stacks above the form by default; sits beside it only when the detail column is wide enough. */
+@container (min-width: 640px) {
+  .rag-editor.with-image {
+    grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
+  }
+}
+
+.rag-image-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.rag-image-box {
+  min-width: 0;
+}
+
+.rag-image-box.zoomed {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid #dfe6dc;
+  border-radius: 6px;
+}
+
+.rag-image-box.zoomed .rag-image {
+  max-width: none;
+  border: 0;
+}
+
+.rag-image-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.rag-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rag-editor-hint {
+  color: #b42318;
 }
 
 .rag-editor-image {
@@ -2062,10 +2105,6 @@ a {
 
 @media (max-width: 960px) {
   .rag-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .rag-editor.with-image {
     grid-template-columns: 1fr;
   }
 }
