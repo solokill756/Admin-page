@@ -60,6 +60,21 @@ export function draftToPatch(draft: ChunkDraft, chunk: RagChunk): UpdateRagChunk
   return patch;
 }
 
+/** What must be re-sent to re-embed a chunk whose save stored the data but failed to index it. */
+export type ReindexPending = "content" | "activate" | null;
+
+/** The backend re-embeds when the patch has `content` (even unchanged) or `isActive: true`. */
+export function reindexKindFor(patch: UpdateRagChunkPayload): Exclude<ReindexPending, null> {
+  return patch.content !== undefined ? "content" : "activate";
+}
+
+export function buildSavePatch(draft: ChunkDraft, chunk: RagChunk, reindexPending: ReindexPending): UpdateRagChunkPayload {
+  const patch = draftToPatch(draft, chunk);
+  if (reindexPending === "content") return { ...patch, content: draft.content };
+  if (reindexPending === "activate") return { ...patch, isActive: true };
+  return patch;
+}
+
 /** Keeps in-progress edits across a list refresh; otherwise adopts the refreshed chunk. */
 export function reconcileDraft(draft: ChunkDraft | null, refreshed: RagChunk, previous: RagChunk): ChunkDraft {
   if (draft && isDraftDirty(draft, previous)) {

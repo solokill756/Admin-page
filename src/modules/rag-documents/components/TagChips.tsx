@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { RagTaxonomyItem } from "../types/adminRag.types";
 
 type TagChipsProps = {
@@ -13,6 +13,15 @@ type TagChipsProps = {
 export function TagChips({ group, items, value, onChange, disabled = false }: TagChipsProps) {
   const selectId = useId();
   const available = items.filter((item) => !value.includes(item.key));
+  const [picked, setPicked] = useState("");
+  // Picking only highlights an option; adding is explicit (button or Enter), so arrow-key browsing never edits tags.
+  const pickedKey = available.some((item) => item.key === picked) ? picked : "";
+
+  function addPicked() {
+    if (!pickedKey) return;
+    onChange([...value, pickedKey]);
+    setPicked("");
+  }
 
   return (
     <div className="rag-tag-group">
@@ -39,22 +48,37 @@ export function TagChips({ group, items, value, onChange, disabled = false }: Ta
           );
         })}
         {available.length > 0 ? (
-          <select
-            className="rag-tag-add"
-            aria-label={`Add ${group}`}
-            value=""
-            disabled={disabled}
-            onChange={(event) => {
-              if (event.target.value) onChange([...value, event.target.value]);
-            }}
-          >
-            <option value="">+ Add</option>
-            {available.map((item) => (
-              <option key={item.key} value={item.key} title={item.labelVi}>
-                {item.labelEn}
-              </option>
-            ))}
-          </select>
+          <span className="rag-tag-adder">
+            <select
+              className="rag-tag-add"
+              aria-label={`Choose ${group} to add`}
+              value={pickedKey}
+              disabled={disabled}
+              onChange={(event) => setPicked(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault(); // never submit the editor form from the picker
+                  addPicked();
+                }
+              }}
+            >
+              <option value="">Choose...</option>
+              {available.map((item) => (
+                <option key={item.key} value={item.key} title={item.labelVi}>
+                  {item.labelEn}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="rag-tag-add-button"
+              aria-label={`Add selected ${group}`}
+              disabled={disabled || !pickedKey}
+              onClick={addPicked}
+            >
+              + Add
+            </button>
+          </span>
         ) : null}
       </div>
     </div>

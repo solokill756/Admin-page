@@ -11,7 +11,7 @@ const RAG_ERROR_MESSAGES: Record<string, string> = {
   RAG_INVALID_DOMAIN: "Invalid domain",
   RAG_JOB_IN_PROGRESS: "This document is already being processed",
   RAG_TAGGING_FAILED: "Tagging failed",
-  RAG_EMBEDDING_FAILED: "Chunk saved, but search indexing failed — press Save again",
+  RAG_EMBEDDING_FAILED: "Chunk saved, but search indexing failed — press Retry indexing",
   VALIDATION_ERROR: "Invalid data entered",
   UNAUTHORIZED: "Session expired",
   ADMIN_ONLY: "You do not have admin privileges",

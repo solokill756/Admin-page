@@ -26,9 +26,12 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
 
   // Only the response of the most recently started request may update state.
   const latestRequestId = useRef(0);
+  // Bumped by replaceChunk so silent refreshes that began earlier are discarded.
+  const replaceEpoch = useRef(0);
 
   const load = useCallback(async (id: string | null, chunkFilter: RagChunkFilter, showLoading: boolean) => {
     const requestId = ++latestRequestId.current;
+    const epochAtStart = replaceEpoch.current;
     if (id === null) return;
     if (showLoading) {
       setIsLoading(true);
@@ -37,6 +40,8 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
     try {
       const response = await adminRagApi.listChunks(id, chunkFilter);
       if (requestId !== latestRequestId.current) return;
+      // A silent refresh that started before a replaceChunk would overwrite it with pre-save data.
+      if (!showLoading && replaceEpoch.current !== epochAtStart) return;
       setChunks(response.data);
       // A filter change (or refresh) may remove the selected chunk; drop the stale selection.
       setSelectedChunkId((current) => keepSelectedChunk(current, response.data));
@@ -84,6 +89,7 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
   const reload = useCallback(() => load(documentIdRef.current, filterRef.current, true), [load]);
 
   const replaceChunk = useCallback((chunk: RagChunk) => {
+    replaceEpoch.current += 1;
     setChunks((current) => current.map((item) => (item.id === chunk.id ? chunk : item)));
   }, []);
 

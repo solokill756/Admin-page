@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RagChunk } from "../types/adminRag.types";
-import { createDraft, draftToPatch, isDraftDirty, reconcileDraft } from "./chunkDraft";
+import { buildSavePatch, createDraft, draftToPatch, reindexKindFor, isDraftDirty, reconcileDraft } from "./chunkDraft";
 
 function chunk(overrides: Partial<RagChunk> = {}): RagChunk {
   return {
@@ -60,6 +60,27 @@ describe("chunkDraft", () => {
     const prev = chunk({ content: "old" });
     const draft = { ...createDraft(prev), content: "typing…" };
     expect(reconcileDraft(draft, chunk({ content: "old", updatedAt: "later" }), prev).content).toBe("typing…");
+  });
+
+  it("reindexKindFor picks content when the failed patch had content, else activate", () => {
+    expect(reindexKindFor({ content: "x", isActive: true })).toBe("content");
+    expect(reindexKindFor({ isActive: true })).toBe("activate");
+  });
+
+  it("buildSavePatch is the plain patch when nothing is pending", () => {
+    const c = chunk();
+    expect(buildSavePatch({ ...createDraft(c), domain: "safety" }, c, null)).toEqual({ domain: "safety" });
+  });
+
+  it("buildSavePatch forces unchanged content for a pending content reindex", () => {
+    const c = chunk({ content: "saved" });
+    expect(buildSavePatch(createDraft(c), c, "content")).toEqual({ content: "saved" });
+  });
+
+  it("buildSavePatch forces isActive true for a pending activation reindex", () => {
+    const c = chunk({ isActive: true });
+    expect(buildSavePatch(createDraft(c), c, "activate")).toEqual({ isActive: true });
+    expect(buildSavePatch({ ...createDraft(c), domain: "safety" }, c, "activate")).toEqual({ domain: "safety", isActive: true });
   });
 
   it("reconcileDraft takes the refreshed chunk when there are no edits", () => {

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { adminRagApi } from "../api/adminRagApi";
-import { createDraft, draftToPatch, isDraftDirty, reconcileDraft } from "../lib/chunkDraft";
-import type { ChunkDraft } from "../lib/chunkDraft";
+import { buildSavePatch, createDraft, isDraftDirty, reconcileDraft, reindexKindFor } from "../lib/chunkDraft";
+import type { ChunkDraft, ReindexPending } from "../lib/chunkDraft";
 import { canProceedInBrowser, DISCARD_RETAG_MESSAGE } from "../lib/discardGuard";
 import { messageForRagError } from "../lib/ragErrors";
 import type { RagChunk, RagDomain, RagTagGroup, RagTaxonomy } from "../types/adminRag.types";
@@ -34,6 +34,7 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
   const [draft, setDraft] = useState<ChunkDraft>(() => createDraft(chunk));
   const [previousChunk, setPreviousChunk] = useState(chunk);
   const [busy, setBusy] = useState<Busy>(null);
+  const [reindexPending, setReindexPending] = useState<ReindexPending>(null);
 
   // A refreshed copy of the same chunk keeps in-progress edits (adjusting state during render).
   if (previousChunk !== chunk) {
@@ -61,15 +62,19 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
   }
 
   async function save() {
-    if (!dirty || busy) return;
+    if ((!dirty && !reindexPending) || busy) return;
     setBusy("save");
+    const patch = buildSavePatch(draft, chunk, reindexPending);
     try {
-      const response = await adminRagApi.updateChunk(chunk.id, draftToPatch(draft, chunk));
+      const response = await adminRagApi.updateChunk(chunk.id, patch);
+      setReindexPending(null);
       applyServerChunk(response.data);
-      showToast("Chunk saved", "success");
+      showToast(reindexPending ? "Chunk indexed" : "Chunk saved", "success");
     } catch (error) {
       showToast(messageForRagError(error, "Unable to save chunk"), "error");
       if (error instanceof AdminApiError && error.code === "RAG_EMBEDDING_FAILED") {
+        // Stored but not indexed: keep Save available as "Retry indexing".
+        setReindexPending(reindexKindFor(patch));
         // Content is stored; pull the saved state so the editor matches it.
         onRefreshNeeded?.();
       }
@@ -127,6 +132,11 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
       >
         {chunk.isManuallyEdited ? (
           <p className="rag-editor-note">Edited by an admin · re-ingesting this document will not overwrite this chunk</p>
+        ) : null}
+        {reindexPending ? (
+          <p className="rag-editor-note rag-editor-note-warning" role="status">
+            Search indexing failed for this chunk — press Retry indexing.
+          </p>
         ) : null}
         {chunk.tagFailed ? (
           <p className="rag-editor-note rag-editor-note-warning">
@@ -188,8 +198,8 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
         </fieldset>
 
         <div className="rag-editor-actions">
-          <button className="primary-button rag-editor-save" type="submit" disabled={!dirty || busy !== null}>
-            {busy === "save" ? "Saving..." : "Save"}
+          <button className="primary-button rag-editor-save" type="submit" disabled={(!dirty && !reindexPending) || busy !== null}>
+            {busy === "save" ? "Saving..." : reindexPending ? "Retry indexing" : "Save"}
           </button>
           <button className="secondary-button" type="button" disabled={busy !== null} onClick={() => void retag()}>
             {busy === "retag" ? "Re-tagging..." : "Re-tag with Jev"}
