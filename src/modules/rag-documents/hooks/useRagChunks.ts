@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { adminRagApi } from "../api/adminRagApi";
+import { keepSelectedChunk } from "../lib/listPaging";
 import type { RagChunk, RagChunkFilter, RagDocument } from "../types/adminRag.types";
 
 const EMPTY_FILTER: RagChunkFilter = {};
@@ -37,6 +38,8 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
       const response = await adminRagApi.listChunks(id, chunkFilter);
       if (requestId !== latestRequestId.current) return;
       setChunks(response.data);
+      // A filter change (or refresh) may remove the selected chunk; drop the stale selection.
+      setSelectedChunkId((current) => keepSelectedChunk(current, response.data));
       setErrorCode(null);
       setIsLoading(false);
     } catch (error) {

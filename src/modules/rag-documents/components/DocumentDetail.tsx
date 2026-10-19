@@ -6,6 +6,7 @@ import type { RagDocument } from "../types/adminRag.types";
 
 type DocumentDetailProps = {
   document: RagDocument | null;
+  isLoading?: boolean;
   onRename: (id: string, title: string) => Promise<void>;
   onReingest: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -66,12 +67,15 @@ function TitleEditor({ document, onRename }: { document: RagDocument; onRename: 
   );
 }
 
-export function DocumentDetail({ document, onRename, onReingest, onDelete }: DocumentDetailProps) {
+export function DocumentDetail({ document, isLoading = false, onRename, onReingest, onDelete }: DocumentDetailProps) {
   const { showToast } = useToast();
   const [isReingesting, setIsReingesting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  if (!document && isLoading) {
+    return <p className="state-copy">Loading document...</p>;
+  }
   if (!document) {
     return <p className="state-copy">Select a document to see its chunks.</p>;
   }

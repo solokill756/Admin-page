@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { adminRagApi } from "../api/adminRagApi";
+import { pageAfterDelete, sameQuery } from "../lib/listPaging";
 import { hasActiveIngest } from "../lib/ragStatus";
 import type { RagDocument, RagDocumentListQuery, RagPagination } from "../types/adminRag.types";
 
@@ -28,7 +29,10 @@ export function useRagDocuments() {
   const [debouncedQuery, setDebouncedQuery] = useState(effectiveQuery);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => setDebouncedQuery(effectiveQuery), SEARCH_DEBOUNCE_MS);
+    const handle = window.setTimeout(
+      () => setDebouncedQuery((current) => (sameQuery(current, effectiveQuery) ? current : effectiveQuery)),
+      SEARCH_DEBOUNCE_MS,
+    );
     return () => window.clearTimeout(handle);
   }, [effectiveQuery]);
 
@@ -113,16 +117,18 @@ export function useRagDocuments() {
   );
 
   const reingest = useCallback(
-    async (id: string) => {
-      await adminRagApi.reingest(id);
+    async (id: string, onUpdated?: (document: RagDocument) => void) => {
+      const response = await adminRagApi.reingest(id);
+      onUpdated?.(response.data);
       await refresh();
     },
     [refresh],
   );
 
   const renameDocument = useCallback(
-    async (id: string, title: string) => {
-      await adminRagApi.renameDocument(id, title);
+    async (id: string, title: string, onUpdated?: (document: RagDocument) => void) => {
+      const response = await adminRagApi.renameDocument(id, title);
+      onUpdated?.(response.data);
       await refresh();
     },
     [refresh],
@@ -133,14 +139,23 @@ export function useRagDocuments() {
       await adminRagApi.deleteDocument(id);
       setSelectedId((current) => (current === id ? null : current));
       const { documents: shown, pagination: currentPagination } = listStateRef.current;
-      if (shown.length === 1 && currentPagination.page > 1) {
-        // Deleted the last item of a later page: step back; the query change reloads the list.
-        updateQuery({ page: currentPagination.page - 1 }, false);
+      // Drop the row immediately so it cannot be clicked while the list reloads.
+      setDocuments((current) => current.filter((doc) => doc.id !== id));
+      const previousPage = pageAfterDelete(
+        id,
+        shown.map((doc) => doc.id),
+        currentPagination.page,
+      );
+      if (previousPage !== null) {
+        // Step back and load right away instead of waiting for the search debounce.
+        const nextQuery = { ...debouncedQueryRef.current, page: previousPage };
+        setQuery((current) => ({ ...current, page: previousPage }));
+        setDebouncedQuery(nextQuery);
         return;
       }
       await refresh();
     },
-    [refresh, updateQuery],
+    [refresh],
   );
 
   return {

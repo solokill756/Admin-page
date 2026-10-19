@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { AddDocumentBar } from "../components/AddDocumentBar";
 import { ChunkList } from "../components/ChunkList";
@@ -7,8 +7,8 @@ import { DocumentList } from "../components/DocumentList";
 import { useRagChunks } from "../hooks/useRagChunks";
 import { useRagDocuments } from "../hooks/useRagDocuments";
 import { useRagTaxonomy } from "../hooks/useRagTaxonomy";
+import { useSelectedDocument } from "../hooks/useSelectedDocument";
 import { messageForRagError } from "../lib/ragErrors";
-import type { RagDocument } from "../types/adminRag.types";
 
 export function AdminRagDocumentsPage() {
   const { showToast } = useToast();
@@ -16,19 +16,22 @@ export function AdminRagDocumentsPage() {
   const { taxonomy } = useRagTaxonomy();
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
-  // Keep showing the selected document if it moves off the currently listed page.
-  const lastSelectedDocument = useRef<RagDocument | null>(null);
-  const listed = rag.documents.find((doc) => doc.id === rag.selectedId) ?? null;
-  if (listed) lastSelectedDocument.current = listed;
-  const selectedDocument =
-    listed ?? (lastSelectedDocument.current?.id === rag.selectedId ? lastSelectedDocument.current : null);
+  // The selected document is tracked by id so it stays fresh when it leaves the listed page.
+  const { setSelectedId, refresh: refreshList } = rag;
+  const handleSelectedNotFound = useCallback(() => {
+    setSelectedId(null);
+    void refreshList();
+  }, [setSelectedId, refreshList]);
+  const seed = rag.documents.find((doc) => doc.id === rag.selectedId) ?? null;
+  const selected = useSelectedDocument(rag.selectedId, seed, handleSelectedNotFound);
+  const selectedDocument = selected.document;
 
-  const chunks = useRagChunks(selectedDocument?.id ?? null, selectedDocument?.status);
+  const chunks = useRagChunks(rag.selectedId, selectedDocument?.status);
 
   async function handleRetry(id: string) {
     setRetryingId(id);
     try {
-      await rag.reingest(id);
+      await rag.reingest(id, selected.merge);
     } catch (error) {
       showToast(messageForRagError(error, "Unable to retry document"), "error");
     } finally {
@@ -66,11 +69,12 @@ export function AdminRagDocumentsPage() {
         <div className="rag-detail-column">
           <DocumentDetail
             document={selectedDocument}
-            onRename={rag.renameDocument}
-            onReingest={rag.reingest}
+            isLoading={selected.isLoading}
+            onRename={(id, title) => rag.renameDocument(id, title, selected.merge)}
+            onReingest={(id) => rag.reingest(id, selected.merge)}
             onDelete={rag.deleteDocument}
           />
-          {selectedDocument ? (
+          {rag.selectedId ? (
             <ChunkList
               chunks={chunks.chunks}
               filter={chunks.filter}
