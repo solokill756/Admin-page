@@ -12,10 +12,10 @@ const TAG_GROUPS: RagTagGroup[] = ["conditions", "allergens", "goals", "nutrient
 
 function cloneTags(tags: RagTags): RagTags {
   return {
-    conditions: [...tags.conditions],
-    allergens: [...tags.allergens],
-    goals: [...tags.goals],
-    nutrients: [...tags.nutrients],
+    conditions: [...(tags.conditions ?? [])],
+    allergens: [...(tags.allergens ?? [])],
+    goals: [...(tags.goals ?? [])],
+    nutrients: [...(tags.nutrients ?? [])],
   };
 }
 
@@ -28,7 +28,7 @@ function sameSet(a: string[], b: string[]): boolean {
 }
 
 function tagsEqual(a: RagTags, b: RagTags): boolean {
-  return TAG_GROUPS.every((group) => sameSet(a[group], b[group]));
+  return TAG_GROUPS.every((group) => sameSet(a[group] ?? [], b[group] ?? []));
 }
 
 export function createDraft(chunk: RagChunk): ChunkDraft {
@@ -73,6 +73,24 @@ export function buildSavePatch(draft: ChunkDraft, chunk: RagChunk, reindexPendin
   if (reindexPending === "content") return { ...patch, content: draft.content };
   if (reindexPending === "activate") return { ...patch, isActive: true };
   return patch;
+}
+
+/** An "activate" retry must not override a Disabled choice: any pending reindex is dropped while the draft is disabled. */
+export function reindexForDraft(pending: ReindexPending, draft: ChunkDraft): ReindexPending {
+  return draft.isActive ? pending : null;
+}
+
+/** Unsaved edits or a pending reindex both need the discard prompt / beforeunload warning. */
+export function isEditorDirty(dirty: boolean, pending: ReindexPending): boolean {
+  return dirty || pending !== null;
+}
+
+export function isContentEmpty(draft: ChunkDraft): boolean {
+  return draft.content.trim() === "";
+}
+
+export function canSaveDraft(draft: ChunkDraft, dirty: boolean, pending: ReindexPending): boolean {
+  return isEditorDirty(dirty, pending) && !isContentEmpty(draft);
 }
 
 /** Keeps in-progress edits across a list refresh; otherwise adopts the refreshed chunk. */

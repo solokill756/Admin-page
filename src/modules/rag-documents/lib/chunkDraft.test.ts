@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { RagChunk } from "../types/adminRag.types";
-import { buildSavePatch, createDraft, draftToPatch, reindexKindFor, isDraftDirty, reconcileDraft } from "./chunkDraft";
+import {
+  buildSavePatch,
+  canSaveDraft,
+  createDraft,
+  draftToPatch,
+  isContentEmpty,
+  isDraftDirty,
+  isEditorDirty,
+  reconcileDraft,
+  reindexForDraft,
+  reindexKindFor,
+} from "./chunkDraft";
 
 function chunk(overrides: Partial<RagChunk> = {}): RagChunk {
   return {
@@ -81,6 +92,37 @@ describe("chunkDraft", () => {
     const c = chunk({ isActive: true });
     expect(buildSavePatch(createDraft(c), c, "activate")).toEqual({ isActive: true });
     expect(buildSavePatch({ ...createDraft(c), domain: "safety" }, c, "activate")).toEqual({ domain: "safety", isActive: true });
+  });
+
+  it("tolerates a chunk whose tags lack a group", () => {
+    const c = chunk({ tags: { conditions: ["diabetes"] } as unknown as RagChunk["tags"] });
+    const d = createDraft(c);
+    expect(d.tags).toEqual({ conditions: ["diabetes"], allergens: [], goals: [], nutrients: [] });
+    expect(isDraftDirty(d, c)).toBe(false);
+    expect(draftToPatch({ ...d, content: "b" }, c)).toEqual({ content: "b" });
+  });
+
+  it("reindexForDraft drops a pending reindex while the draft is Disabled", () => {
+    const c = chunk();
+    expect(reindexForDraft("activate", { ...createDraft(c), isActive: false })).toBeNull();
+    expect(reindexForDraft("activate", createDraft(c))).toBe("activate");
+    expect(reindexForDraft(null, createDraft(c))).toBeNull();
+  });
+
+  it("isEditorDirty counts a pending reindex as dirty", () => {
+    expect(isEditorDirty(false, "content")).toBe(true);
+    expect(isEditorDirty(true, null)).toBe(true);
+    expect(isEditorDirty(false, null)).toBe(false);
+  });
+
+  it("canSaveDraft is false for empty or whitespace content, even with a pending reindex", () => {
+    const c = chunk();
+    const empty = { ...createDraft(c), content: "  \n" };
+    expect(isContentEmpty(empty)).toBe(true);
+    expect(canSaveDraft(empty, true, null)).toBe(false);
+    expect(canSaveDraft(empty, false, "content")).toBe(false);
+    expect(canSaveDraft({ ...createDraft(c), content: "b" }, true, null)).toBe(true);
+    expect(canSaveDraft(createDraft(c), false, null)).toBe(false);
   });
 
   it("reconcileDraft takes the refreshed chunk when there are no edits", () => {

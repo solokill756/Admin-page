@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { adminRagApi } from "../api/adminRagApi";
-import { keepSelectedChunk } from "../lib/listPaging";
+import { keepSelectedChunk, mergeSilentChunks } from "../lib/listPaging";
 import type { RagChunk, RagChunkFilter, RagDocument } from "../types/adminRag.types";
 
 const EMPTY_FILTER: RagChunkFilter = {};
@@ -42,9 +42,14 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
       if (requestId !== latestRequestId.current) return;
       // A silent refresh that started before a replaceChunk would overwrite it with pre-save data.
       if (!showLoading && replaceEpoch.current !== epochAtStart) return;
-      setChunks(response.data);
-      // A filter change (or refresh) may remove the selected chunk; drop the stale selection.
-      setSelectedChunkId((current) => keepSelectedChunk(current, response.data));
+      if (showLoading) {
+        setChunks(response.data);
+        // A filter or document change may remove the selected chunk; drop the stale selection.
+        setSelectedChunkId((current) => keepSelectedChunk(current, response.data));
+      } else {
+        // Silent refresh: keep the selected chunk (and its open editor) even if it dropped out of the filter.
+        setChunks((current) => mergeSilentChunks(current, response.data, selectedChunkIdRef.current));
+      }
       setErrorCode(null);
       setIsLoading(false);
     } catch (error) {
@@ -57,6 +62,8 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
     }
   }, []);
 
+  const selectedChunkIdRef = useRef(selectedChunkId);
+  selectedChunkIdRef.current = selectedChunkId;
   const filterRef = useRef(filter);
   filterRef.current = filter;
   const documentIdRef = useRef(documentId);

@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { keepSelectedChunk, pageAfterDelete, sameQuery } from "./listPaging";
+import { keepSelectedChunk, mergeSilentChunks, pageAfterDelete, sameChunkFilter, sameQuery } from "./listPaging";
+
+describe("sameChunkFilter", () => {
+  it("treats undefined and missing keys as equal", () => {
+    expect(sameChunkFilter({}, { blockKind: undefined })).toBe(true);
+    expect(sameChunkFilter({ isActive: false }, { isActive: false })).toBe(true);
+  });
+  it("detects differences", () => {
+    expect(sameChunkFilter({}, { blockKind: "text" })).toBe(false);
+    expect(sameChunkFilter({ isActive: false }, {})).toBe(false);
+  });
+});
+
+describe("mergeSilentChunks", () => {
+  const a = { id: "a", v: 1 };
+  const b = { id: "b", v: 1 };
+  it("returns the refreshed list when the selection is still in it", () => {
+    const next = [{ id: "a", v: 2 }];
+    expect(mergeSilentChunks([a, b], next, "a")).toBe(next);
+  });
+  it("keeps the previous copy of a selected chunk that dropped out", () => {
+    expect(mergeSilentChunks([a, b], [b], "a")).toEqual([b, a]);
+  });
+  it("returns the refreshed list when nothing is selected or the previous copy is unknown", () => {
+    expect(mergeSilentChunks([a], [b], null)).toEqual([b]);
+    expect(mergeSilentChunks([b], [b], "a")).toEqual([b]);
+  });
+});
 
 describe("pageAfterDelete", () => {
   it("steps back when the only item of a later page is deleted", () => {

@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { adminRagApi } from "../api/adminRagApi";
-import { buildSavePatch, createDraft, isDraftDirty, reconcileDraft, reindexKindFor } from "../lib/chunkDraft";
+import {
+  buildSavePatch,
+  canSaveDraft,
+  createDraft,
+  isContentEmpty,
+  isDraftDirty,
+  isEditorDirty,
+  reconcileDraft,
+  reindexForDraft,
+  reindexKindFor,
+} from "../lib/chunkDraft";
 import type { ChunkDraft, ReindexPending } from "../lib/chunkDraft";
 import { canProceedInBrowser, DISCARD_RETAG_MESSAGE } from "../lib/discardGuard";
 import { messageForRagError } from "../lib/ragErrors";
@@ -42,13 +52,21 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
     setDraft(reconcileDraft(draft, chunk, previousChunk));
   }
 
+  // Disabling the chunk drops a pending "activate" retry so it can never override that choice.
+  if (reindexForDraft(reindexPending, draft) !== reindexPending) {
+    setReindexPending(null);
+  }
+
   const dirty = isDraftDirty(draft, chunk);
+  const guardDirty = isEditorDirty(dirty, reindexPending);
+  const contentEmpty = isContentEmpty(draft);
+  const saveEnabled = canSaveDraft(draft, dirty, reindexPending);
 
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
   useEffect(() => {
-    onDirtyChangeRef.current(dirty);
-  }, [dirty]);
+    onDirtyChangeRef.current(guardDirty);
+  }, [guardDirty]);
   useEffect(() => () => onDirtyChangeRef.current(false), []);
 
   const domains = taxonomy?.domains ?? [];
@@ -62,7 +80,7 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
   }
 
   async function save() {
-    if ((!dirty && !reindexPending) || busy) return;
+    if (!saveEnabled || busy) return;
     setBusy("save");
     const patch = buildSavePatch(draft, chunk, reindexPending);
     try {
@@ -152,6 +170,7 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
               value={draft.content}
               onChange={(event) => setDraft({ ...draft, content: event.target.value })}
             />
+            {contentEmpty ? <small className="rag-editor-hint" role="alert">Content can&apos;t be empty</small> : null}
           </label>
 
           <label className="rag-editor-field">
@@ -198,7 +217,7 @@ export function ChunkEditor({ chunk, taxonomy, onSaved, onDirtyChange, onRefresh
         </fieldset>
 
         <div className="rag-editor-actions">
-          <button className="primary-button rag-editor-save" type="submit" disabled={(!dirty && !reindexPending) || busy !== null}>
+          <button className="primary-button rag-editor-save" type="submit" disabled={!saveEnabled || busy !== null}>
             {busy === "save" ? "Saving..." : reindexPending ? "Retry indexing" : "Save"}
           </button>
           <button className="secondary-button" type="button" disabled={busy !== null} onClick={() => void retag()}>
