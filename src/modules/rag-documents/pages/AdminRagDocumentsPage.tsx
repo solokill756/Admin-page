@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { AddDocumentBar } from "../components/AddDocumentBar";
 import { ChunkEditor } from "../components/ChunkEditor";
@@ -10,12 +10,14 @@ import { useRagDocuments } from "../hooks/useRagDocuments";
 import { useRagTaxonomy } from "../hooks/useRagTaxonomy";
 import { useSelectedDocument } from "../hooks/useSelectedDocument";
 import { canProceedInBrowser } from "../lib/discardGuard";
+import { sameChunkFilter } from "../lib/listPaging";
 import { messageForRagError } from "../lib/ragErrors";
+import type { RagChunkFilter } from "../types/adminRag.types";
 
 export function AdminRagDocumentsPage() {
   const { showToast } = useToast();
   const rag = useRagDocuments();
-  const { taxonomy } = useRagTaxonomy();
+  const { taxonomy, errorCode: taxonomyErrorCode, retry: retryTaxonomy } = useRagTaxonomy();
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
   // The selected document is tracked by id so it stays fresh when it leaves the listed page.
@@ -32,9 +34,22 @@ export function AdminRagDocumentsPage() {
 
   // Unsaved-changes guard: every selection change goes through `guarded`, so the confirm lives in one place.
   const dirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
   const handleDirtyChange = useCallback((dirty: boolean) => {
     dirtyRef.current = dirty;
+    setIsDirty(dirty);
   }, []);
+
+  // Reload / tab close while editing (sidebar navigation cannot be blocked with BrowserRouter).
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
   // `isNoop` skips both the prompt and the action when the "change" re-selects the current item.
   function guarded<A extends unknown[]>(action: (...args: A) => void, isNoop?: (...args: A) => boolean) {
     return (...args: A) => {
@@ -95,6 +110,15 @@ export function AdminRagDocumentsPage() {
             onDelete={rag.deleteDocument}
             onBeforeDelete={() => canProceedInBrowser(dirtyRef.current)}
           />
+          {rag.selectedId && taxonomyErrorCode ? (
+            <div className="rag-warnings" role="status">
+              <strong>Tag options failed to load.</strong>
+              <p>The editor has no domain or tag choices until they load.</p>
+              <button className="secondary-button" type="button" onClick={retryTaxonomy}>
+                Retry
+              </button>
+            </div>
+          ) : null}
           {rag.selectedId ? (
             <ChunkList
               chunks={chunks.chunks}
@@ -104,7 +128,10 @@ export function AdminRagDocumentsPage() {
               taxonomy={taxonomy}
               selectedChunkId={chunks.selectedChunkId}
               onSelect={guarded(setSelectedChunkId, (chunkId) => chunkId === chunks.selectedChunkId)}
-              onFilterChange={guarded(setFilter)}
+              onFilterChange={guarded(
+                (next: RagChunkFilter) => setFilter(next),
+                (next) => sameChunkFilter(next, chunks.filter),
+              )}
               onReload={() => void chunks.reload()}
               renderEditor={(chunk) => (
                 <ChunkEditor

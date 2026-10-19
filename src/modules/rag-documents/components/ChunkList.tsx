@@ -2,6 +2,7 @@ import { FileText, Image as ImageIcon, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
+import { chunkAriaLabel } from "../lib/chunkLabel";
 import { sortChunks } from "../lib/chunkOrder";
 import { messageForRagError } from "../lib/ragErrors";
 import type { RagChunk, RagChunkFilter, RagTagGroup, RagTaxonomy } from "../types/adminRag.types";
@@ -61,6 +62,7 @@ function ChunkCard({
       className={`rag-chunk-card${isSelected ? " selected" : ""}${chunk.isActive ? "" : " inactive"}`}
       type="button"
       aria-pressed={isSelected}
+      aria-label={chunkAriaLabel(chunk)}
       onClick={() => onSelect(chunk.id)}
     >
       <span className="rag-chunk-head">
@@ -72,7 +74,7 @@ function ChunkCard({
       <span className="rag-chunk-chips">
         <span className="rag-chip rag-chip-domain">{domainLabel}</span>
         {TAG_GROUPS.flatMap((group) =>
-          chunk.tags[group].map((key) => (
+          (chunk.tags[group] ?? []).map((key) => (
             <span key={`${group}:${key}`} className="rag-chip">
               {tagLabel(taxonomy, group, key)}
             </span>

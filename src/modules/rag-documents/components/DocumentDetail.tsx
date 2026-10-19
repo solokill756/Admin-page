@@ -2,6 +2,7 @@ import { ExternalLink, FileText, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { messageForRagError } from "../lib/ragErrors";
+import { documentStatusLabel } from "../lib/ragStatus";
 import type { RagDocument } from "../types/adminRag.types";
 
 type DocumentDetailProps = {
@@ -54,7 +55,7 @@ function TitleEditor({ document, onRename }: { document: RagDocument; onRename: 
       aria-label="Document title"
       autoFocus
       value={draft}
-      maxLength={300}
+      maxLength={500}
       onChange={(event) => setDraft(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
@@ -127,6 +128,7 @@ export function DocumentDetail({ document, isLoading = false, onRename, onReinge
         )}
         {document.language ? <span className="rag-doc-language">{LANGUAGE_LABELS[document.language]}</span> : null}
         <span>{document.chunkCount} chunks</span>
+        <span className={`rag-doc-status rag-status-${document.status}`}>{documentStatusLabel(document)}</span>
       </div>
 
       {warnings.length > 0 ? (
@@ -160,7 +162,7 @@ export function DocumentDetail({ document, isLoading = false, onRename, onReinge
       {isConfirmingDelete ? (
         <div className="modal-backdrop" role="presentation">
           <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-rag-document-title">
-            <h2 id="delete-rag-document-title">Delete this document?</h2>
+            <h2 id="delete-rag-document-title">Delete &quot;{document.title}&quot;?</h2>
             <p>All its chunks and images will be removed from the knowledge base.</p>
             <div className="modal-actions">
               <button className="secondary-button" type="button" disabled={isDeleting} onClick={() => setIsConfirmingDelete(false)}>
