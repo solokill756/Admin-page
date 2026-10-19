@@ -10,6 +10,8 @@ type DocumentDetailProps = {
   onRename: (id: string, title: string) => Promise<void>;
   onReingest: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Return false to stop the delete dialog from opening (e.g. unsaved edits the admin chose to keep). */
+  onBeforeDelete?: () => boolean;
 };
 
 const LANGUAGE_LABELS = { en: "EN", vi: "VI", mixed: "Mixed" } as const;
@@ -67,7 +69,7 @@ function TitleEditor({ document, onRename }: { document: RagDocument; onRename: 
   );
 }
 
-export function DocumentDetail({ document, isLoading = false, onRename, onReingest, onDelete }: DocumentDetailProps) {
+export function DocumentDetail({ document, isLoading = false, onRename, onReingest, onDelete, onBeforeDelete }: DocumentDetailProps) {
   const { showToast } = useToast();
   const [isReingesting, setIsReingesting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -147,7 +149,10 @@ export function DocumentDetail({ document, isLoading = false, onRename, onReinge
         >
           {isReingesting ? "Re-ingesting…" : "Re-ingest"}
         </button>
-        <button className="danger-button" type="button" onClick={() => setIsConfirmingDelete(true)}>
+        <button className="danger-button" type="button" onClick={() => {
+            if (onBeforeDelete && !onBeforeDelete()) return;
+            setIsConfirmingDelete(true);
+          }}>
           Delete
         </button>
       </div>

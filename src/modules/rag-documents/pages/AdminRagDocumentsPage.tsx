@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useToast } from "../../../shared/components/ToastProvider";
 import { AddDocumentBar } from "../components/AddDocumentBar";
+import { ChunkEditor } from "../components/ChunkEditor";
 import { ChunkList } from "../components/ChunkList";
 import { DocumentDetail } from "../components/DocumentDetail";
 import { DocumentList } from "../components/DocumentList";
@@ -8,6 +9,7 @@ import { useRagChunks } from "../hooks/useRagChunks";
 import { useRagDocuments } from "../hooks/useRagDocuments";
 import { useRagTaxonomy } from "../hooks/useRagTaxonomy";
 import { useSelectedDocument } from "../hooks/useSelectedDocument";
+import { canProceedInBrowser } from "../lib/discardGuard";
 import { messageForRagError } from "../lib/ragErrors";
 
 export function AdminRagDocumentsPage() {
@@ -27,6 +29,24 @@ export function AdminRagDocumentsPage() {
   const selectedDocument = selected.document;
 
   const chunks = useRagChunks(rag.selectedId, selectedDocument?.status);
+
+  // Unsaved-changes guard: every selection change goes through `guarded`, so the confirm lives in one place.
+  const dirtyRef = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+  // `isNoop` skips both the prompt and the action when the "change" re-selects the current item.
+  function guarded<A extends unknown[]>(action: (...args: A) => void, isNoop?: (...args: A) => boolean) {
+    return (...args: A) => {
+      if (isNoop?.(...args)) return;
+      if (canProceedInBrowser(dirtyRef.current)) action(...args);
+    };
+  }
+  const selectDocument = guarded(
+    (id: string) => rag.setSelectedId(id),
+    (id) => id === rag.selectedId,
+  );
+  const { setSelectedChunkId, setFilter, refresh: refreshChunks, replaceChunk } = chunks;
 
   async function handleRetry(id: string) {
     setRetryingId(id);
@@ -51,7 +71,7 @@ export function AdminRagDocumentsPage() {
 
       <div className="rag-layout">
         <div className="rag-list-column">
-          <AddDocumentBar addUrl={rag.addUrl} uploadPdf={rag.uploadPdf} onSelect={rag.setSelectedId} />
+          <AddDocumentBar addUrl={rag.addUrl} uploadPdf={rag.uploadPdf} onSelect={selectDocument} />
           <DocumentList
             documents={rag.documents}
             pagination={rag.pagination}
@@ -60,7 +80,7 @@ export function AdminRagDocumentsPage() {
             errorCode={rag.errorCode}
             selectedId={rag.selectedId}
             retryingId={retryingId}
-            onSelect={rag.setSelectedId}
+            onSelect={selectDocument}
             onQueryChange={rag.updateQuery}
             onRetryDocument={(id) => void handleRetry(id)}
             onReload={() => void rag.reload()}
@@ -73,6 +93,7 @@ export function AdminRagDocumentsPage() {
             onRename={(id, title) => rag.renameDocument(id, title, selected.merge)}
             onReingest={(id) => rag.reingest(id, selected.merge)}
             onDelete={rag.deleteDocument}
+            onBeforeDelete={() => canProceedInBrowser(dirtyRef.current)}
           />
           {rag.selectedId ? (
             <ChunkList
@@ -82,10 +103,19 @@ export function AdminRagDocumentsPage() {
               errorCode={chunks.errorCode}
               taxonomy={taxonomy}
               selectedChunkId={chunks.selectedChunkId}
-              onSelect={chunks.setSelectedChunkId}
-              onFilterChange={chunks.setFilter}
+              onSelect={guarded(setSelectedChunkId, (chunkId) => chunkId === chunks.selectedChunkId)}
+              onFilterChange={guarded(setFilter)}
               onReload={() => void chunks.reload()}
-              // Task 4: pass renderEditor={(chunk) => <ChunkEditor ... />} here.
+              renderEditor={(chunk) => (
+                <ChunkEditor
+                  key={chunk.id}
+                  chunk={chunk}
+                  taxonomy={taxonomy}
+                  onSaved={replaceChunk}
+                  onDirtyChange={handleDirtyChange}
+                  onRefreshNeeded={() => void refreshChunks()}
+                />
+              )}
             />
           ) : null}
         </div>
