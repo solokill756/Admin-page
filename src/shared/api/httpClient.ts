@@ -29,9 +29,24 @@ export async function adminRequest<TResponse>(
   path: string,
   options: RequestOptions = {},
 ): Promise<TResponse> {
+  const response = await sendAdminRequest(path, options);
+  return (await readJson(response)) as TResponse;
+}
+
+/** Same auth and error/401 handling as adminRequest, but resolves with the response body as a Blob. */
+export async function adminRequestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const response = await sendAdminRequest(path, options);
+  return response.blob();
+}
+
+/** Sends the request and returns the response only when it is ok; otherwise throws AdminApiError. */
+async function sendAdminRequest(path: string, options: RequestOptions): Promise<Response> {
   const token = getAdminAccessToken();
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  // For FormData the browser must set Content-Type itself (with the multipart boundary).
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -46,10 +61,9 @@ export async function adminRequest<TResponse>(
   } catch {
     throw new AdminApiError("NETWORK_ERROR", "Unable to connect to server", 0);
   }
-  const body = await readJson(response);
 
   if (!response.ok) {
-    const error = toApiError(body, response.status);
+    const error = toApiError(await readJson(response), response.status);
     if (response.status === 401 && !options.skipUnauthorizedRedirect) {
       clearAdminAuthStorage();
       window.location.assign("/admin/login");
@@ -57,7 +71,7 @@ export async function adminRequest<TResponse>(
     throw error;
   }
 
-  return body as TResponse;
+  return response;
 }
 
 async function readJson(response: Response): Promise<unknown> {

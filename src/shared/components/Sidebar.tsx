@@ -1,5 +1,6 @@
 import {
   Apple,
+  BookOpen,
   Dumbbell,
   LayoutDashboard,
   LogOut,
@@ -16,6 +17,7 @@ const navItems = [
   { label: "Recipes", path: "/admin/recipes", icon: Soup },
   { label: "Users", path: "/admin/users", icon: Users },
   { label: "Condition Rules", path: "/admin/condition-rules", icon: ShieldCheck },
+  { label: "Knowledge base", path: "/admin/rag-documents", icon: BookOpen },
 ];
 
 type SidebarProps = {

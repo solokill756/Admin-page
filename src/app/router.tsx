@@ -5,6 +5,7 @@ import { AdminLoginPage } from "../modules/auth/pages/AdminLoginPage";
 import { AdminDashboardPage } from "../modules/dashboard/pages/AdminDashboardPage";
 import { AdminExercisesPage } from "../modules/exercises/pages/AdminExercisesPage";
 import { AdminFoodsPage } from "../modules/foods/pages/AdminFoodsPage";
+import { AdminRagDocumentsPage } from "../modules/rag-documents/pages/AdminRagDocumentsPage";
 import { AdminRecipesPage } from "../modules/recipes/pages/AdminRecipesPage";
 import { AdminUsersPage } from "../modules/users/pages/AdminUsersPage";
 import { AdminConditionRulesPage } from "../modules/condition-rules/pages/AdminConditionRulesPage";
@@ -29,6 +30,7 @@ export function AppRouter() {
         <Route path="recipes" element={<AdminRecipesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="condition-rules" element={<AdminConditionRulesPage />} />
+        <Route path="rag-documents" element={<AdminRagDocumentsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>
