@@ -127,7 +127,8 @@ export function DocumentDetail({ document, isLoading = false, onRename, onReinge
           </span>
         )}
         {document.language ? <span className="rag-doc-language">{LANGUAGE_LABELS[document.language]}</span> : null}
-        <span>{document.chunkCount} chunks</span>
+        {/* The Ready status label already includes the count. */}
+        {document.status === "ready" ? null : <span>{document.chunkCount} chunks</span>}
         <span className={`rag-doc-status rag-status-${document.status}`}>{documentStatusLabel(document)}</span>
       </div>
 

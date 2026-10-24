@@ -32,3 +32,22 @@ export function mergeSilentChunks<T extends { id: string }>(previous: T[], next:
 export function keepSelectedChunk(selectedId: string | null, chunks: { id: string }[]): string | null {
   return selectedId !== null && chunks.some((chunk) => chunk.id === selectedId) ? selectedId : null;
 }
+
+/**
+ * - loading: a filter/document change or manual reload, so the list is replaced.
+ * - silent: a refresh after the admin's own edit, so the open editor is kept even if it left the filter.
+ * - ingest: a re-ingest finished and may have deleted chunks, so missing ones (and their selection) go.
+ */
+export type ChunkRefreshMode = "loading" | "silent" | "ingest";
+
+export function applyChunkRefresh<T extends { id: string }>(
+  mode: ChunkRefreshMode,
+  previous: T[],
+  next: T[],
+  selectedId: string | null,
+): { chunks: T[]; selectedId: string | null } {
+  if (mode === "silent") {
+    return { chunks: mergeSilentChunks(previous, next, selectedId), selectedId };
+  }
+  return { chunks: next, selectedId: keepSelectedChunk(selectedId, next) };
+}

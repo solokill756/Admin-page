@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { RagChunk } from "../types/adminRag.types";
 import {
+  applyStoredPatch,
   buildSavePatch,
   canSaveDraft,
   createDraft,
+  deriveEditorState,
   draftToPatch,
   isContentEmpty,
   isDraftDirty,
@@ -129,5 +131,44 @@ describe("chunkDraft", () => {
     const prev = chunk({ content: "old" });
     expect(reconcileDraft(createDraft(prev), chunk({ content: "retagged" }), prev).content).toBe("retagged");
     expect(reconcileDraft(null, chunk({ content: "retagged" }), prev).content).toBe("retagged");
+  });
+
+  it("applyStoredPatch adopts the fields a save stored even though indexing failed", () => {
+    const c = chunk({ isActive: false, domain: "guidelines" });
+    const stored = applyStoredPatch(c, { isActive: true, domain: "safety", tags: { ...c.tags, goals: ["weight_loss"] } });
+    expect(stored).toEqual({ ...c, isActive: true, domain: "safety", tags: { ...c.tags, goals: ["weight_loss"] } });
+    expect(c.isActive).toBe(false);
+  });
+
+  // NB1: re-enable under "Inactive only" fails to index, then choose Disabled — the server chunk is active, so Disabled must be savable.
+  it("a Disabled choice after a failed re-enable is savable as isActive false", () => {
+    const stored = applyStoredPatch(chunk({ isActive: false }), { isActive: true });
+    const disabled = { ...createDraft(stored), isActive: false };
+    const state = deriveEditorState(disabled, stored, "activate");
+    expect(state.saveEnabled).toBe(true);
+    expect(buildSavePatch(disabled, stored, state.pending)).toEqual({ isActive: false });
+  });
+
+  // NB3: toggling Disabled and back without saving keeps "Retry indexing".
+  it("deriveEditorState hides a pending activation while Disabled and restores it when re-enabled", () => {
+    const stored = chunk({ isActive: true });
+    const active = createDraft(stored);
+    expect(deriveEditorState({ ...active, isActive: false }, stored, "activate").pending).toBeNull();
+    expect(deriveEditorState(active, stored, "activate")).toEqual({
+      dirty: false,
+      pending: "activate",
+      guardDirty: true,
+      saveEnabled: true,
+    });
+  });
+
+  it("deriveEditorState is clean with no edits and nothing pending", () => {
+    const c = chunk();
+    expect(deriveEditorState(createDraft(c), c, null)).toEqual({
+      dirty: false,
+      pending: null,
+      guardDirty: false,
+      saveEnabled: false,
+    });
   });
 });
