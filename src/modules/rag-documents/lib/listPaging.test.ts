@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keepSelectedChunk, mergeSilentChunks, pageAfterDelete, sameChunkFilter, sameQuery } from "./listPaging";
+import { applyChunkRefresh, keepSelectedChunk, mergeSilentChunks, pageAfterDelete, sameChunkFilter, sameQuery } from "./listPaging";
 
 describe("sameChunkFilter", () => {
   it("treats undefined and missing keys as equal", () => {
@@ -50,6 +50,25 @@ describe("sameQuery", () => {
   it("detects differences", () => {
     expect(sameQuery({ page: 1 }, { page: 2 })).toBe(false);
     expect(sameQuery({ page: 1 }, { page: 1, search: "x" })).toBe(false);
+  });
+});
+
+describe("applyChunkRefresh", () => {
+  const a = { id: "a", v: 1 };
+  const b = { id: "b", v: 1 };
+  it("loading: takes the new list and drops a selection that is no longer listed", () => {
+    expect(applyChunkRefresh("loading", [a, b], [b], "a")).toEqual({ chunks: [b], selectedId: null });
+  });
+  it("silent: keeps the selected chunk's previous copy so an open editor stays", () => {
+    expect(applyChunkRefresh("silent", [a, b], [b], "a")).toEqual({ chunks: [b, a], selectedId: "a" });
+  });
+  // NB2: chunks deleted by a re-ingest leave the list, and their selection is cleared.
+  it("ingest: drops chunks the re-ingest removed, including the selected one", () => {
+    expect(applyChunkRefresh("ingest", [a, b], [b], "a")).toEqual({ chunks: [b], selectedId: null });
+    expect(applyChunkRefresh("ingest", [a, b], [{ id: "a", v: 2 }], "a")).toEqual({
+      chunks: [{ id: "a", v: 2 }],
+      selectedId: "a",
+    });
   });
 });
 

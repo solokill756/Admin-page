@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError } from "../../../shared/api/httpClient";
 import { adminRagApi } from "../api/adminRagApi";
-import { keepSelectedChunk, mergeSilentChunks } from "../lib/listPaging";
+import { applyChunkRefresh } from "../lib/listPaging";
+import type { ChunkRefreshMode } from "../lib/listPaging";
 import type { RagChunk, RagChunkFilter, RagDocument } from "../types/adminRag.types";
 
 const EMPTY_FILTER: RagChunkFilter = {};
@@ -29,10 +30,11 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
   // Bumped by replaceChunk so silent refreshes that began earlier are discarded.
   const replaceEpoch = useRef(0);
 
-  const load = useCallback(async (id: string | null, chunkFilter: RagChunkFilter, showLoading: boolean) => {
+  const load = useCallback(async (id: string | null, chunkFilter: RagChunkFilter, mode: ChunkRefreshMode) => {
     const requestId = ++latestRequestId.current;
     const epochAtStart = replaceEpoch.current;
     if (id === null) return;
+    const showLoading = mode === "loading";
     if (showLoading) {
       setIsLoading(true);
       setErrorCode(null);
@@ -40,16 +42,11 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
     try {
       const response = await adminRagApi.listChunks(id, chunkFilter);
       if (requestId !== latestRequestId.current) return;
-      // A silent refresh that started before a replaceChunk would overwrite it with pre-save data.
+      // A background refresh that started before a replaceChunk would overwrite it with pre-save data.
       if (!showLoading && replaceEpoch.current !== epochAtStart) return;
-      if (showLoading) {
-        setChunks(response.data);
-        // A filter or document change may remove the selected chunk; drop the stale selection.
-        setSelectedChunkId((current) => keepSelectedChunk(current, response.data));
-      } else {
-        // Silent refresh: keep the selected chunk (and its open editor) even if it dropped out of the filter.
-        setChunks((current) => mergeSilentChunks(current, response.data, selectedChunkIdRef.current));
-      }
+      const next = applyChunkRefresh(mode, chunksRef.current, response.data, selectedChunkIdRef.current);
+      setChunks(next.chunks);
+      setSelectedChunkId(next.selectedId);
       setErrorCode(null);
       setIsLoading(false);
     } catch (error) {
@@ -62,6 +59,8 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
     }
   }, []);
 
+  const chunksRef = useRef(chunks);
+  chunksRef.current = chunks;
   const selectedChunkIdRef = useRef(selectedChunkId);
   selectedChunkIdRef.current = selectedChunkId;
   const filterRef = useRef(filter);
@@ -70,16 +69,16 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
   documentIdRef.current = documentId;
 
   useEffect(() => {
-    void load(documentId, filter, true);
+    void load(documentId, filter, "loading");
   }, [documentId, filter, load]);
 
-  // Reload silently when the selected document finishes ingesting (status -> ready).
+  // Reload without a spinner when the selected document finishes ingesting (status -> ready); deleted chunks drop out.
   const previousStatus = useRef<{ id: string | null; status?: RagDocument["status"] }>({ id: documentId, status: documentStatus });
   useEffect(() => {
     const previous = previousStatus.current;
     previousStatus.current = { id: documentId, status: documentStatus };
     if (documentId !== null && previous.id === documentId && previous.status !== undefined && previous.status !== "ready" && documentStatus === "ready") {
-      void load(documentId, filterRef.current, false);
+      void load(documentId, filterRef.current, "ingest");
     }
   }, [documentId, documentStatus, load]);
 
@@ -91,9 +90,9 @@ export function useRagChunks(documentId: string | null, documentStatus?: RagDocu
     [],
   );
 
-  const refresh = useCallback(() => load(documentIdRef.current, filterRef.current, false), [load]);
+  const refresh = useCallback(() => load(documentIdRef.current, filterRef.current, "silent"), [load]);
 
-  const reload = useCallback(() => load(documentIdRef.current, filterRef.current, true), [load]);
+  const reload = useCallback(() => load(documentIdRef.current, filterRef.current, "loading"), [load]);
 
   const replaceChunk = useCallback((chunk: RagChunk) => {
     replaceEpoch.current += 1;

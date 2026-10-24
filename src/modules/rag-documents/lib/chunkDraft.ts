@@ -80,6 +80,31 @@ export function reindexForDraft(pending: ReindexPending, draft: ChunkDraft): Rei
   return draft.isActive ? pending : null;
 }
 
+/** The chunk as the server stored it after a save whose data was kept but whose indexing failed. */
+export function applyStoredPatch(chunk: RagChunk, patch: UpdateRagChunkPayload): RagChunk {
+  return { ...chunk, ...patch, tags: patch.tags ? cloneTags(patch.tags) : chunk.tags };
+}
+
+export type EditorState = {
+  dirty: boolean;
+  /** The pending reindex that applies to the current draft (hidden while Disabled, never forgotten). */
+  pending: ReindexPending;
+  guardDirty: boolean;
+  saveEnabled: boolean;
+};
+
+/** `storedPending` survives Disabled ↔ Used toggles; only a successful save clears it. */
+export function deriveEditorState(draft: ChunkDraft, chunk: RagChunk, storedPending: ReindexPending): EditorState {
+  const dirty = isDraftDirty(draft, chunk);
+  const pending = reindexForDraft(storedPending, draft);
+  return {
+    dirty,
+    pending,
+    guardDirty: isEditorDirty(dirty, pending),
+    saveEnabled: canSaveDraft(draft, dirty, pending),
+  };
+}
+
 /** Unsaved edits or a pending reindex both need the discard prompt / beforeunload warning. */
 export function isEditorDirty(dirty: boolean, pending: ReindexPending): boolean {
   return dirty || pending !== null;
